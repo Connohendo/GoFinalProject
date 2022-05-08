@@ -11,6 +11,24 @@ import (
 	_ "strings"
 )
 
+/*
+Main Function:
+1.Opens database and defers to close when it is done
+2. Calls create table where it creates a games table if it is not already made with the required fields for the project
+3. Calls add game data where it uses excelize to open the Excel sheet and fill the database row by row
+4. Calls gin to make a self-hosted api that uses the url section after /search as a context param and throws that into
+find game function
+5. Find Game function uses the c context param from gin to do a select statement from the database and find the info
+needed to display then returns it into the parameters set
+6. gin converts to JSON and sends the info to the localhost @ port 8090(i.e. localhost:8090/search/Counter-Strike)
+
+The user can use the url as a search bar to find the game of their choosing along as they use the proper Query Name that
+the game is listed under in the Excel sheet. For example, localhost:8090/search/Counter-Strike will bring up the desired game
+Counter-Strike but Counter Strike will "strike" an error. So please use caution when spelling and punctuating. Besides these
+points above the program self-hosts and allows the user to search the 13,283 different listings from the Excel sheet and their
+desired data.
+
+*/
 func main() {
 	myDatabase := OpenDataBase("./Demo.db")
 	defer myDatabase.Close()
@@ -35,6 +53,10 @@ func main() {
 	r.Run(":8090") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
 
+/*
+Open Data Base Function:
+Handles the job of creating the database.
+*/
 func OpenDataBase(dbfile string) *sql.DB {
 	database, err := sql.Open("sqlite3", dbfile)
 	if err != nil {
@@ -43,6 +65,10 @@ func OpenDataBase(dbfile string) *sql.DB {
 	return database
 }
 
+/*
+Create Tables Function:
+Handles the job of creating the tables for the database given there is no such table already in the databse.
+*/
 func create_tables(database *sql.DB) {
 	createStatement1 := "CREATE TABLE IF NOT EXISTS GAMES(    " +
 		"game_Name TEXT NOT NULL PRIMARY KEY," +
@@ -59,6 +85,11 @@ func create_tables(database *sql.DB) {
 	}
 }
 
+/*
+Add Game Data Function:
+Adds the data to the database from the Excel sheet using excelize and a INSERT statement. The INSERT statement includes
+an or IGNORE to solve the problem of duplicates throwing us out of filling the database. We
+*/
 func addGameData(database *sql.DB) {
 	insert_statement := "INSERT or IGNORE INTO GAMES (game_Name, ownersCount, metaCriticScore, recommendations, releaseDate, requiredAge, systems, playerEstimate) VALUES (?,?,?,?,?,?,?,?);"
 	excelFile, err := excelize.OpenFile("games-features (1).xlsx")
@@ -105,6 +136,13 @@ func addGameData(database *sql.DB) {
 	}
 }
 
+/*
+Find Game Function:
+Finds the game passed in the url after /search and returns the required info for parsing into JSON format by gin in the main
+function by using a SELECT statement. The SELECT statement grabs all the info by using a * specifying the table using FROM GAMES and
+the specific game using WHERE gameName = ?, game. The ? is subbed with game which is given to us as a parameter of the function, and
+that is passed in main where it was grabbed by gin from the url.
+*/
 func findGame(database *sql.DB, game string) (string, int, int, int, string, int, string, int) {
 	var gameName, releasedate, systems string
 	var owners, metaCritic, recomm, reqAge, playEst int
